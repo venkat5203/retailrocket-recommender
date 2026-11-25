@@ -1,0 +1,111 @@
+# Retailrocket E-commerce Recommender
+
+An end-to-end recommender-system project on the Retailrocket e-commerce dataset: exploratory analysis, data preparation with a time-based split, three recommendation models (popularity, item-item collaborative filtering, and latent factors via SVD), and offline ranking evaluation.
+
+## Dataset
+
+The raw data is **not included** in this repository because it is about 1 GB. Download the Retailrocket e-commerce dataset (available on Kaggle as "retailrocket/ecommerce-dataset") and place these files in `data/raw/`:
+
+| File | Contents |
+|---|---|
+| `events.csv` | ~2.76M user events: `timestamp` (ms), `visitorid`, `event` (view / addtocart / transaction), `itemid`, `transactionid` |
+| `item_properties_part1.csv`, `item_properties_part2.csv` | Time-stamped item attributes (`categoryid`, `available`, and hashed properties) |
+| `category_tree.csv` | `categoryid` → `parentid` hierarchy |
+
+## Project structure
+
+```
+retailrocket-recommender/
+├── data/
+│   ├── raw/                  # place the Kaggle CSVs here (git-ignored)
+│   └── processed/            # generated artefacts (git-ignored)
+├── reports/
+│   ├── eda_summary.json      # EDA output
+│   ├── metrics.csv / .json   # model evaluation results
+│   └── figures/              # charts from the EDA
+├── scripts/
+│   ├── run_eda.py            # exploratory analysis and charts
+│   ├── train_and_evaluate.py # temporal split, train models, report metrics
+│   └── recommend.py          # top-N recommendations for a visitor
+├── src/recsys/
+│   ├── config.py             # paths, event weights, hyperparameters
+│   ├── data_loader.py        # CSV loading (streams the large item-property files)
+│   ├── preprocessing.py      # cleaning, temporal split, k-core filtering, sparse matrices
+│   ├── models.py             # Popularity, ItemKNN (cosine), SVD recommenders
+│   └── evaluation.py         # Precision, Recall, HitRate, NDCG, MAP, coverage
+├── tests/                    # pytest unit tests
+├── requirements.txt
+└── pytest.ini
+```
+
+## Setup
+
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+## Usage
+
+Run the tests:
+
+```bash
+pytest
+```
+
+Exploratory analysis (writes `reports/eda_summary.json` and `reports/figures/`):
+
+```bash
+python scripts/run_eda.py
+```
+
+Train and evaluate all models on a temporal split (the last 20% of the timeline is the test set):
+
+```bash
+python scripts/train_and_evaluate.py
+```
+
+Get recommendations for a visitor, trained on the full history:
+
+```bash
+python scripts/recommend.py --visitor 530559 --top-n 10 --model item_knn
+```
+
+## Method
+
+**Implicit feedback.** Each event is converted to a weight: view = 1, addtocart = 3, transaction = 5. When a visitor has several events with the same item, the strongest weight is kept.
+
+**Preparation.** Duplicate events are removed. Data is split by time, not at random, so the models only see the past. Users and items with fewer than 5 interactions in the training period are removed iteratively (k-core filtering). Test pairs are restricted to users and items that exist in training, so the test set does not leak information from the future.
+
+**Models.**
+- *Popularity:* recommends the same most-interacted items to everyone.
+- *Item-KNN:* cosine similarity between items computed from the user-item matrix, keeping the 50 nearest neighbours per item. A user's score for an item is the summed similarity to items they already interacted with.
+- *SVD:* truncated SVD (64 factors) on log-scaled weights.
+
+**Evaluation.** Relevant items for a user are their held-out `addtocart` or `transaction` events. Models rank all items, excluding items the user already interacted with during training. Metrics are Precision@K, Recall@K, HitRate@K, NDCG@K, and MAP@K for K ∈ {5, 10, 20}, plus catalogue coverage.
+
+## Results
+
+Results from `scripts/train_and_evaluate.py` on the Retailrocket data (temporal split, cutoff 2015-08-18; 52k training users, 30.7k items, 281 evaluable test users):
+
+| Model | Precision@10 | Recall@10 | HitRate@10 | NDCG@10 | MAP@10 | Coverage |
+|---|---|---|---|---|---|---|
+| Popularity | 0.0028 | 0.0041 | 0.0214 | 0.0032 | 0.0010 | 0.0020 |
+| Item-KNN (cosine) | **0.0075** | 0.0201 | 0.0391 | **0.0161** | **0.0113** | **0.0875** |
+| SVD (64 factors) | 0.0053 | **0.0225** | **0.0498** | 0.0147 | 0.0085 | 0.0459 |
+
+Full results at K = 5, 10 and 20 are in `reports/metrics.csv`.
+
+Both personalised models clearly beat the popularity baseline. Item-KNN has the best ranking quality (NDCG, MAP) and the broadest catalogue coverage. SVD finds slightly more relevant items (recall and hit rate). The evaluation set is small (281 users), so differences of a few thousandths are within noise. Treat these numbers as a sanity check, not a final benchmark.
+
+## Limitations and possible extensions
+
+- Only implicit feedback is used. Ratings do not exist in this dataset.
+- Item properties other than `categoryid` are not used yet (`available`, price-like hashed values).
+- Evaluation is offline. Real impact would need an online A/B test.
+- Possible extensions: implicit-ALS, BPR, session-based models (GRU4Rec), or a two-stage retrieval and re-ranking pipeline.
+
+## Data source
+
+Retailrocket e-commerce dataset (Kaggle). Please check the dataset licence before redistributing the data.
