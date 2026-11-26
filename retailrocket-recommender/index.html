@@ -1,255 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Retailrocket Recommender</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retail Product Discovery & Recommendation Engine</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-:root{--bg:#0f1420;--card:#171e2e;--text:#e7ecf5;--muted:#8b97ad;--accent:#5b9dfb;--amber:#f2a65a;--green:#6fcf97;--grey:#7d8799;--border:#262f44}
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
-header,main,footer{max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px}
-header{padding-top:40px}
-h1{margin:0 0 8px;font-size:28px}
-header p{color:var(--muted);margin:0;max-width:780px;line-height:1.6}
-main{padding-bottom:40px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin:28px 0 20px}
-.card,.stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
-.stat .v{font-size:26px;font-weight:700}
-.stat .l{color:var(--muted);font-size:13px;margin-top:4px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.card h2{font-size:16px;margin:0 0 14px;font-weight:600}
-.wide{grid-column:1/-1}
-.chart{position:relative;height:320px}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:right}
-th:first-child,td:first-child{text-align:left}
-th{color:var(--muted);font-weight:500}
-td.best{color:var(--green);font-weight:700}
-select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px}
-.bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;min-width:120px}
-.bar span{display:block;height:100%;background:var(--accent)}
-.muted{color:var(--muted);font-size:14px}
-.note{color:var(--muted);font-size:13px;margin:14px 0 0;line-height:1.6}
-footer{padding-bottom:40px;color:var(--muted);font-size:13px}
-footer a{color:var(--accent)}
-@media(max-width:820px){.grid{grid-template-columns:1fr}}
-</style>
-</head>
-<body>
-<header>
-  <h1>Retailrocket E-commerce Recommender</h1>
-  <p>Analysis of 2.76 million user events from an online store, with three recommendation models compared on a time-based test split. Item-based collaborative filtering and latent-factor (SVD) models both outperform a popularity baseline.</p>
-</header>
-
-<main>
-  <section class="stats" id="stats"></section>
-
-  <section class="grid">
-    <div class="card wide">
-      <h2>Daily events by type (log scale)</h2>
-      <div class="chart"><canvas id="daily"></canvas></div>
-    </div>
-
-    <div class="card">
-      <h2>Visitor funnel</h2>
-      <div class="chart"><canvas id="funnel"></canvas></div>
-    </div>
-
-    <div class="card">
-      <h2>Top categories by views</h2>
-      <div class="chart"><canvas id="cats"></canvas></div>
-    </div>
-
-    <div class="card wide">
-      <h2>Model comparison (K = 10)</h2>
-      <div class="chart"><canvas id="models"></canvas></div>
-    </div>
-
-    <div class="card wide">
-      <h2>All metrics</h2>
-      <div id="metricsTable"></div>
-      <p class="note" id="metricsNote"></p>
-    </div>
-
-    <div class="card wide">
-      <h2>Recommendation explorer</h2>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-        <label for="visitor" class="muted">Visitor ID</label>
-        <select id="visitor"></select>
-        <span id="history" class="muted"></span>
-      </div>
-      <div id="recs"></div>
-      <p class="note">Top-10 recommendations from Item-KNN, trained on the full filtered history. Items the visitor has already interacted with are excluded. Scores are summed item similarities, so they are comparable within a visitor, not across visitors.</p>
-    </div>
-  </section>
-</main>
-
-<footer>
-  Data: Retailrocket e-commerce dataset. Code and reproduction steps: <a href="https://github.com/venkat5203/retailrocket-recommender">GitHub repository</a>.
-</footer>
-
-<script src="data.js"></script>
-<script>
-const COLORS = { view: "#5b9dfb", addtocart: "#f2a65a", transaction: "#6fcf97" };
-const MODEL_COLORS = { popularity: "#7d8799", item_knn: "#5b9dfb", svd: "#f2a65a" };
-const MODEL_LABELS = { popularity: "Popularity", item_knn: "Item-KNN", svd: "SVD" };
-const TICK = { color: "#8b97ad" };
-const GRID = { color: "#262f44" };
-const LEGEND = { labels: { color: "#e7ecf5" } };
-const fmt = n => Number(n).toLocaleString();
-
-if (window.DASHBOARD_DATA) {
-  render(window.DASHBOARD_DATA);
-} else {
-  document.querySelector("main").insertAdjacentHTML("afterbegin",
-    `<p class="muted">Dashboard data file (web/data.js) not found.</p>`);
-}
-
-function render(d) {
-  const e = d.eda;
-
-  document.getElementById("stats").innerHTML = [
-    ["Events", e.n_events],
-    ["Visitors", e.n_visitors],
-    ["Items", e.n_items],
-    ["Purchase events", e.event_counts.transaction],
-  ].map(([label, value]) =>
-    `<div class="stat"><div class="v">${fmt(value)}</div><div class="l">${label}</div></div>`
-  ).join("");
-
-  new Chart(document.getElementById("daily"), {
-    type: "line",
-    data: {
-      labels: d.daily.dates,
-      datasets: Object.entries(d.daily.series).map(([name, values]) => ({
-        label: name,
-        data: values,
-        borderColor: COLORS[name],
-        backgroundColor: COLORS[name],
-        borderWidth: 2,
-        pointRadius: 0,
-        tension: 0.25,
-      })),
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      scales: {
-        x: { ticks: { ...TICK, maxTicksLimit: 10 }, grid: GRID },
-        y: { type: "logarithmic", ticks: TICK, grid: GRID },
-      },
-      plugins: { legend: LEGEND },
-    },
-  });
-
-  const f = e.funnel;
-  new Chart(document.getElementById("funnel"), {
-    type: "bar",
-    data: {
-      labels: [
-        `Viewed (${fmt(f.visitors_viewed)})`,
-        `Added to cart (${fmt(f.visitors_added_to_cart)})`,
-        `Purchased (${fmt(f.visitors_purchased)})`,
-      ],
-      datasets: [{
-        data: [f.visitors_viewed, f.visitors_added_to_cart, f.visitors_purchased],
-        backgroundColor: ["#7d8799", "#f2a65a", "#6fcf97"],
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { ticks: TICK, grid: GRID }, y: { ticks: TICK, grid: GRID, type: "logarithmic" } },
-    },
-  });
-
-  const catEntries = Object.entries(e.top_categories_by_views);
-  new Chart(document.getElementById("cats"), {
-    type: "bar",
-    data: {
-      labels: catEntries.map(([id]) => `Category ${id}`),
-      datasets: [{ data: catEntries.map(([, v]) => v), backgroundColor: "#5b9dfb" }],
-    },
-    options: {
-      indexAxis: "y",
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { ticks: TICK, grid: GRID }, y: { ticks: TICK, grid: { display: false } } },
-    },
-  });
-
-  const models = Object.keys(d.metrics);
-  const metricNames = ["recall@10", "hit_rate@10", "ndcg@10", "map@10"];
-  new Chart(document.getElementById("models"), {
-    type: "bar",
-    data: {
-      labels: ["Recall@10", "HitRate@10", "NDCG@10", "MAP@10"],
-      datasets: models.map(m => ({
-        label: MODEL_LABELS[m] || m,
-        data: metricNames.map(name => d.metrics[m][name]),
-        backgroundColor: MODEL_COLORS[m],
-      })),
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: { x: { ticks: TICK, grid: GRID }, y: { ticks: TICK, grid: GRID } },
-      plugins: { legend: LEGEND },
-    },
-  });
-
-  renderMetricsTable(d.metrics, models);
-  setupExplorer(d.visitors);
-}
-
-function renderMetricsTable(metrics, models) {
-  const rowNames = Object.keys(metrics[models[0]]).filter(n => n !== "n_eval_users");
-  const header = models.map(m => `<th>${MODEL_LABELS[m] || m}</th>`).join("");
-  const rows = rowNames.map(name => {
-    const values = models.map(m => metrics[m][name]);
-    const best = Math.max(...values);
-    const cells = values.map(v =>
-      `<td class="${v === best ? "best" : ""}">${v.toFixed(4)}</td>`
-    ).join("");
-    return `<tr><td>${name}</td>${cells}</tr>`;
-  }).join("");
-  document.getElementById("metricsTable").innerHTML =
-    `<table><thead><tr><th>Metric</th>${header}</tr></thead><tbody>${rows}</tbody></table>`;
-  const n = metrics[models[0]].n_eval_users;
-  document.getElementById("metricsNote").textContent =
-    `Best value per row is highlighted. Evaluated on ${fmt(n)} test users with at least one add-to-cart or purchase after the split. Results are based on a small sample, so differences of a few thousandths are within noise.`;
-}
-
-function setupExplorer(visitors) {
-  const select = document.getElementById("visitor");
-  const ids = Object.keys(visitors);
-  select.innerHTML = ids.map(id => `<option value="${id}">${id}</option>`).join("");
-
-  const show = id => {
-    const v = visitors[id];
-    document.getElementById("history").textContent =
-      `${v.history_size} items in this visitor's history`;
-    const max = Math.max(...v.recommendations.map(r => r.score)) || 1;
-    const rows = v.recommendations.map((r, i) => `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${fmt(r.itemid)}</td>
-        <td>${r.categoryid ?? "–"}</td>
-        <td>${r.score.toFixed(2)}</td>
-        <td><div class="bar"><span style="width:${(100 * r.score / max).toFixed(1)}%"></span></div></td>
-      </tr>`).join("");
-    document.getElementById("recs").innerHTML =
-      `<table><thead><tr><th>Rank</th><th>Item ID</th><th>Category</th><th>Score</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-  };
-
-  select.addEventListener("change", () => show(select.value));
-  show(ids[0]);
-}
-</script>
-</body>
-</html>
+:root{--bg:#0c111b;--card:#151e2d;--text:#edf2fa;--muted:#98a6b8;--accent:#68a8ff;--green:#55d6a3;--line:#29364a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header,main,footer{max-width:1240px;margin:auto;padding-left:24px;padding-right:24px}header{padding-top:42px;padding-bottom:24px;border-bottom:1px solid var(--line)}
+h1{font-size:clamp(30px,5vw,54px);line-height:1.04;margin:0 0 12px;letter-spacing:-1.8px}.lead{color:var(--muted);max-width:800px;line-height:1.65;margin:0}
+main{padding-top:24px;padding-bottom:48px}.tag{display:inline-block;color:var(--green);border:1px solid #28634f;border-radius:99px;padding:6px 10px;font-size:11px;letter-spacing:1px;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin:22px 0}.card,.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.stat .v{font-size:28px;font-weight:750}.stat .l{font-size:12px;color:var(--muted);margin-top:4px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.wide{grid-column:1/-1}.card h2{font-size:16px;margin:0 0 14px}
+.chart{height:280px;position:relative}.muted{color:var(--muted);font-size:13px;line-height:1.6}.note{background:#101a28;border-left:3px solid var(--accent);padding:12px 14px;margin:15px 0 0;color:#b9c8da;font-size:13px;line-height:1.55}
+select{background:#0d1522;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:11px 12px;font-size:14px;max-width:100%}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.controls label{font-size:13px;color:var(--muted)}
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.product{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#101824}
+.product img{width:100%;height:130px;object-fit:contain;background:#f5f6f7}.product .body{padding:12px}.product h3{font-size:13px;line-height:1.4;margin:0 0 6px}.product .meta{font-size:11px;color:var(--muted);line-height:1.5}.score{color:var(--green);font-weight:700;font-size:12px;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:500}
+a{color:var(--accent)}footer{padding-bottom:38px;color:var(--muted);font-size:12px;line-height:1.6}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}header,main,footer{padding-left:15px;padding-right:15px}}
+</style></head><body>
+<header><span class="tag">CURRENT CATALOGUE · 2026-UPDATED RECORDS</span>
+<h1>Discover products.<br>Recommend with context.</h1>
+<p class="lead">A content-based product recommendation system built from current Open Food Facts product records. TF-IDF similarity ranks products by their names, brands, categories and available attributes; Maximal Marginal Relevance (MMR) adds recommendation diversity.</p>
+<p class="note" id="freshness">Loading the latest available catalogue snapshot…</p></header>
+<main><section class="stats" id="stats"></section><section class="grid">
+<article class="card"><h2>Top product categories</h2><div class="chart"><canvas id="categories"></canvas></div></article>
+<article class="card"><h2>Top brands in this snapshot</h2><div class="chart"><canvas id="brands"></canvas></div></article>
+<article class="card wide"><h2>Product recommendation explorer</h2>
+<div class="controls"><label for="product">Choose a product</label><select id="product"></select></div>
+<div id="selected" class="muted"></div><div id="recommendations" class="products"></div>
+<p class="note">Method: TF-IDF content similarity with MMR reranking (lambda 0.72). Scores are relative ranking signals, not probabilities or predicted purchase likelihood.</p></article>
+<article class="card wide"><h2>Catalogue freshness and method</h2><p id="method" class="muted"></p><div id="methodDetails" class="muted"></div></article>
+</section></main>
+<footer>Data: <a href="https://world.openfoodfacts.org/" target="_blank" rel="noreferrer">Open Food Facts</a>. Attribution: Open Food Facts contributors. Database licence: Open Database License (ODbL) 1.0. No user events, purchases or conversion rates are represented. See <a href="https://github.com/venkat5203/retailrocket-recommender">project source</a>.</footer>
+<script src="data.js"></script><script>
+(function(){
+ const d=window.DASHBOARD_DATA;
+ const fmt=n=>Number(n||0).toLocaleString("en-GB");
+ const date=s=>s?new Date(s).toLocaleString("en-GB",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"})+" UTC":"not available";
+ const esc=s=>String(s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+ if(!d){document.getElementById("freshness").textContent="No snapshot found. Run scripts/build_current_recommender.py.";return;}
+ const m=d.metadata,s=d.summary;
+ document.getElementById("freshness").textContent="Snapshot retrieved "+date(m.retrieved_at_utc)+" · Product update coverage "+date(m.earliest_product_update_utc)+" to "+date(m.latest_product_update_utc)+".";
+ document.getElementById("stats").innerHTML=[["Products",s.products],["Categories",s.categories],["Brands",s.brands],["Recommendation sets",s.recommendation_sets]]
+ .map(([l,v])=>'<div class="stat"><div class="v">'+fmt(v)+'</div><div class="l">'+l+'</div></div>').join("");
+ new Chart(document.getElementById("categories"),{type:"bar",data:{labels:d.categories.slice(0,10).map(x=>x.category),datasets:[{data:d.categories.slice(0,10).map(x=>x.count),backgroundColor:"#68a8ff"}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#98a6b8"}},y:{ticks:{color:"#98a6b8"}}}}});
+ new Chart(document.getElementById("brands"),{type:"bar",data:{labels:d.brands.slice(0,10).map(x=>x.brand),datasets:[{data:d.brands.slice(0,10).map(x=>x.count),backgroundColor:"#55d6a3"}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#98a6b8"}},y:{ticks:{color:"#98a6b8"}}}}});
+ const byCode=Object.fromEntries(d.products.map(p=>[p.barcode,p]));
+ const select=document.getElementById("product");
+ select.innerHTML=d.products.map(p=>'<option value="'+p.barcode+'">'+esc(p.name||"Unnamed product")+" · "+esc(p.brand||"Unknown brand")+'</option>').join("");
+ function show(code){
+  const p=byCode[code]; if(!p)return;
+  const rows=d.recommendations[code]||[];
+  document.getElementById("selected").textContent=(p.name||"Unnamed product")+" · "+(p.brand||"Unknown brand")+" · "+p.category+" · barcode "+p.barcode;
+  document.getElementById("recommendations").innerHTML=rows.map(x=>{
+   const image=x.image_url?'<img src="'+esc(x.image_url)+'" alt="" loading="lazy">':'';
+   return '<article class="product">'+image+'<div class="body"><h3>'+esc(x.name||"Unnamed product")+'</h3><div class="meta">'+esc(x.brand||"Unknown brand")+'<br>'+esc(x.category||"Uncategorized")+'<br>Updated '+date(x.last_modified_at_utc)+'</div><div class="score">Similarity '+Number(x.similarity||0).toFixed(3)+'</div><div class="meta"><a href="'+esc(x.product_url)+'" target="_blank" rel="noreferrer">Product record</a></div></div></article>';
+  }).join("")||'<p class="muted">No sufficiently similar products were found.</p>';
+ }
+ select.addEventListener("change",()=>show(select.value));
+ if(d.products.length){select.value=d.products[0].barcode;show(select.value);}
+ document.getElementById("method").textContent=m.method;
+ document.getElementById("methodDetails").textContent=m.limitation+" Dataset last-modified cutoff: "+m.required_last_modified_from_utc+".";
+})();
+</script></body></html>
