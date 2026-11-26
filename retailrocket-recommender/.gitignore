@@ -1,8 +1,8 @@
-# Raw and generated data (too large for GitHub)
-data/raw/*.csv
+# Raw and generated data
+data/raw/*
+!data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
-!data/raw/.gitkeep
 
 # Python
 __pycache__/
