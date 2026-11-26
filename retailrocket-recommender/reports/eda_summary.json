@@ -1,4 +1,35 @@
 {
-  "status": "pending",
-  "message": "This historical 2015 interaction analysis is no longer used by the live dashboard. Run scripts/build_current_recommender.py to create the current 2026-updated catalogue and content-based recommendations."
+  "n_events": 2756101,
+  "n_visitors": 1407580,
+  "n_items": 235061,
+  "date_range": [
+    "2015-05-03 03:00:04.384000",
+    "2015-09-18 02:59:47.788000"
+  ],
+  "event_counts": {
+    "view": 2664312,
+    "addtocart": 69332,
+    "transaction": 22457
+  },
+  "funnel": {
+    "visitors_viewed": 1404179,
+    "visitors_added_to_cart": 37722,
+    "visitors_purchased": 11719,
+    "view_to_cart_rate": 0.0245,
+    "cart_to_purchase_rate": 0.2804
+  },
+  "events_per_visitor_median": 1.0,
+  "top_categories_by_views": {
+    "1051": 73016,
+    "1483": 62786,
+    "491": 59300,
+    "959": 50112,
+    "342": 45288,
+    "683": 37765,
+    "1279": 33532,
+    "5": 28953,
+    "646": 27669,
+    "48": 26705
+  },
+  "share_of_views_with_category": 0.9046
 }
