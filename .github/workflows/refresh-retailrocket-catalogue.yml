@@ -2,6 +2,10 @@ name: Refresh current product catalogue
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/refresh-retailrocket-catalogue.yml"
   schedule:
     - cron: "31 3 * * 1"
 
