@@ -18,7 +18,7 @@ SOURCE_URL = "https://world.openfoodfacts.org/"
 CUTOFF = datetime(2026, 1, 1, tzinfo=timezone.utc)
 CUTOFF_EPOCH = int(CUTOFF.timestamp())
 PAGE_SIZE = 100
-MAX_PAGES = 3
+MAX_PAGES = 1
 REQUEST_GAP_SECONDS = 7.5
 FIELDS = ",".join(["code", "product_name", "brands", "categories_tags_en", "quantity",
                    "last_modified_t", "ingredients_text", "nutrition_grades", "image_url",
@@ -167,9 +167,56 @@ def make_recommendations(products):
     return result
 
 
+def reuse_cached_snapshot_after_api_error(error):
+    """Keep the last successful dashboard dataset when the source API is temporarily unavailable."""
+    data_path = ROOT / "data.js"
+    prefix = "window.DASHBOARD_DATA = "
+    try:
+        javascript = data_path.read_text(encoding="utf-8").strip()
+        if not javascript.startswith(prefix):
+            return False
+        serialized = javascript[len(prefix):].strip()
+        if serialized.endswith(";"):
+            serialized = serialized[:-1].strip()
+        cached_payload = json.loads(serialized)
+        products = cached_payload.get("products") if isinstance(cached_payload, dict) else None
+        metadata = cached_payload.get("metadata") if isinstance(cached_payload, dict) else None
+        if not isinstance(products, list) or len(products) < 3 or not isinstance(metadata, dict):
+            return False
+        retrieved = datetime.fromisoformat(str(metadata.get("retrieved_at_utc", "")).replace("Z", "+00:00"))
+        age_days = (datetime.now(timezone.utc) - retrieved).total_seconds() / 86400
+        if age_days < 0 or age_days > 45:
+            print("Cached snapshot is older than 45 days; refusing to present it as current.")
+            return False
+    except Exception as cache_error:
+        print("No usable last-known-good dashboard snapshot is available: " + str(cache_error))
+        return False
+
+    status = {
+        "status": "degraded_using_last_known_good_snapshot",
+        "used_cached_snapshot": True,
+        "checked_at_utc": datetime.now(timezone.utc).isoformat(),
+        "snapshot_retrieved_at_utc": metadata.get("retrieved_at_utc"),
+        "snapshot_product_count": len(products),
+        "maximum_cache_age_days": 45,
+        "source_error": str(error),
+    }
+    reports = ROOT / "reports"
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "refresh_status.json").write_text(json.dumps(status, indent=2), encoding="utf-8")
+    print("WARNING: Open Food Facts is unavailable. Keeping the last successful catalogue snapshot.")
+    print(json.dumps(status, indent=2))
+    return True
+
+
 def main():
     print("Fetching Open Food Facts products whose last-modified date is in 2026...")
-    raw, page_info, raw_snapshot_products = collect()
+    try:
+        raw, page_info, raw_snapshot_products = collect()
+    except Exception as exc:
+        if reuse_cached_snapshot_after_api_error(exc):
+            return
+        raise
     products = [normalize(p) for p in raw]
     products.sort(key=lambda p: p["last_modified_t"], reverse=True)
     recommendations = make_recommendations(products)
@@ -237,6 +284,15 @@ def main():
             "products": raw_snapshot_products,
         }, ensure_ascii=False),
         encoding="utf-8",
+    )
+    refresh_status = {
+        "status": "fresh_snapshot",
+        "used_cached_snapshot": False,
+        "refreshed_at_utc": payload["metadata"]["retrieved_at_utc"],
+        "product_count": len(products),
+    }
+    (reports / "refresh_status.json").write_text(
+        json.dumps(refresh_status, indent=2), encoding="utf-8"
     )
     print(json.dumps({"metadata": payload["metadata"], "summary": payload["summary"], "top_categories": categories[:5]}, indent=2))
 
