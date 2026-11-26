@@ -2,11 +2,6 @@ name: Refresh current product catalogue
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "retailrocket-recommender/scripts/build_current_recommender.py"
-      - ".github/workflows/refresh-retailrocket-catalogue.yml"
   schedule:
     - cron: "31 3 * * 1"
 
@@ -27,6 +22,18 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: pip install -r retailrocket-recommender/requirements.txt
+      - name: Restore last known-good catalogue snapshot
+        uses: actions/cache@v4
+        with:
+          path: |
+            retailrocket-recommender/data.js
+            retailrocket-recommender/web/data.js
+            retailrocket-recommender/reports/current_catalogue_summary.json
+            retailrocket-recommender/reports/source_products_2026.json
+            retailrocket-recommender/reports/refresh_status.json
+          key: open-food-facts-recommender-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            open-food-facts-recommender-${{ runner.os }}-
       - name: Fetch 2026 catalogue and build recommendations
         working-directory: retailrocket-recommender
         run: python scripts/build_current_recommender.py
@@ -34,7 +41,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add retailrocket-recommender/data.js retailrocket-recommender/web/data.js retailrocket-recommender/reports/current_catalogue_summary.json retailrocket-recommender/reports/source_products_2026.json
+          git add retailrocket-recommender/data.js retailrocket-recommender/web/data.js retailrocket-recommender/reports/current_catalogue_summary.json retailrocket-recommender/reports/source_products_2026.json retailrocket-recommender/reports/refresh_status.json
           if ! git diff --cached --quiet; then
             git commit -m "Refresh current Open Food Facts recommendation catalogue"
             git pull --rebase origin main
