@@ -27,18 +27,23 @@ FIELDS = ",".join(["code", "product_name", "brands", "categories_tags_en", "quan
 
 def get_page(session, page):
     params = {"page": page, "page_size": PAGE_SIZE, "sort_by": "last_modified_t", "fields": FIELDS}
-    for _ in range(4):
-        response = session.get(API_URL, params=params, timeout=45)
+    for attempt in range(6):
+        response = session.get(API_URL, params=params, timeout=60)
         if response.status_code in (429, 503):
-            wait = int(response.headers.get("Retry-After", "30"))
-            time.sleep(min(max(wait, 15), 120))
+            retry_after = response.headers.get("Retry-After")
+            try:
+                wait = int(retry_after) if retry_after else min(20 * (2 ** attempt), 180)
+            except (TypeError, ValueError):
+                wait = min(20 * (2 ** attempt), 180)
+            print("Open Food Facts returned HTTP " + str(response.status_code) + "; retrying in " + str(wait) + " seconds.")
+            time.sleep(min(max(wait, 10), 180))
             continue
         response.raise_for_status()
         payload = response.json()
         if not isinstance(payload.get("products"), list):
             raise RuntimeError("Open Food Facts did not return a products list.")
         return payload
-    raise RuntimeError("Open Food Facts rate limit persisted after retries.")
+    raise RuntimeError("Open Food Facts rate limit persisted after six backoff retries.")
 
 
 def iso(ts):
@@ -99,11 +104,15 @@ def collect():
             payload = get_page(session, page)
         raw.extend(payload.get("products", []))
 
+    recent_raw = [
+        p for p in raw
+        if int(p.get("last_modified_t") or 0) >= CUTOFF_EPOCH
+    ]
     unique = {}
-    for p in raw:
+    for p in recent_raw:
         code = str(p.get("code") or "").strip()
         stamp = int(p.get("last_modified_t") or 0)
-        if code and stamp >= CUTOFF_EPOCH:
+        if code:
             if code not in unique or stamp > int(unique[code].get("last_modified_t") or 0):
                 unique[code] = p
     if len(unique) < 3:
@@ -114,9 +123,10 @@ def collect():
         "pages_requested": pages,
         "page_size": PAGE_SIZE,
         "raw_records_received": len(raw),
+        "records_updated_since_2026_before_deduplication": len(recent_raw),
         "unique_products_updated_since_2026": len(unique),
         "sort_direction_detected": "descending" if descending else "ascending",
-    }
+    }, recent_raw
 
 
 def make_recommendations(products):
@@ -159,7 +169,7 @@ def make_recommendations(products):
 
 def main():
     print("Fetching Open Food Facts products whose last-modified date is in 2026...")
-    raw, page_info = collect()
+    raw, page_info, raw_snapshot_products = collect()
     products = [normalize(p) for p in raw]
     products.sort(key=lambda p: p["last_modified_t"], reverse=True)
     recommendations = make_recommendations(products)
@@ -217,6 +227,16 @@ def main():
     reports.mkdir(parents=True, exist_ok=True)
     (reports / "current_catalogue_summary.json").write_text(
         json.dumps(payload["metadata"] | payload["summary"], indent=2), encoding="utf-8"
+    )
+    (reports / "source_products_2026.json").write_text(
+        json.dumps({
+            "metadata": payload["metadata"] | {
+                "snapshot_note": "Un-deduplicated product records received from Open Food Facts, filtered to last_modified_t >= 2026-01-01 UTC."
+            },
+            "page_info": page_info,
+            "products": raw_snapshot_products,
+        }, ensure_ascii=False),
+        encoding="utf-8",
     )
     print(json.dumps({"metadata": payload["metadata"], "summary": payload["summary"], "top_categories": categories[:5]}, indent=2))
 
