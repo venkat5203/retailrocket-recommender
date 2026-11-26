@@ -90,6 +90,7 @@ footer a{color:var(--accent)}
   Data: Retailrocket e-commerce dataset. Code and reproduction steps: <a href="https://github.com/venkat5203/retailrocket-recommender">GitHub repository</a>.
 </footer>
 
+<script src="data.js"></script>
 <script>
 const COLORS = { view: "#5b9dfb", addtocart: "#f2a65a", transaction: "#6fcf97" };
 const MODEL_COLORS = { popularity: "#7d8799", item_knn: "#5b9dfb", svd: "#f2a65a" };
@@ -99,13 +100,12 @@ const GRID = { color: "#262f44" };
 const LEGEND = { labels: { color: "#e7ecf5" } };
 const fmt = n => Number(n).toLocaleString();
 
-fetch("data.json")
-  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(render)
-  .catch(err => {
-    document.querySelector("main").insertAdjacentHTML("afterbegin",
-      `<p class="muted">Could not load data.json (${err}).</p>`);
-  });
+if (window.DASHBOARD_DATA) {
+  render(window.DASHBOARD_DATA);
+} else {
+  document.querySelector("main").insertAdjacentHTML("afterbegin",
+    `<p class="muted">Dashboard data file (web/data.js) not found.</p>`);
+}
 
 function render(d) {
   const e = d.eda;
