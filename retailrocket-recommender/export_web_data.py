@@ -1,0 +1,98 @@
+"""Export everything the web dashboard needs to web/data.json.
+
+Run after run_eda.py and train_and_evaluate.py. Trains Item-KNN on the full filtered
+history and precomputes top-10 recommendations for a sample of visitors, so the static
+site needs no backend.
+"""
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+
+from recsys import config  # noqa: E402
+from recsys.data_loader import load_events, load_item_categories  # noqa: E402
+from recsys.models import ItemKNNRecommender  # noqa: E402
+from recsys.preprocessing import (  # noqa: E402
+    aggregate_interactions,
+    build_index,
+    clean_events,
+    k_core_filter,
+    to_sparse,
+)
+
+SAMPLES_PER_BAND = 6
+BANDS = [(5, 10), (10, 30), (30, 10**9)]  # history size bands to sample from
+TOP_N = 10
+
+
+def main():
+    web_dir = ROOT / "web"
+    web_dir.mkdir(exist_ok=True)
+
+    eda = json.loads((config.REPORTS_DIR / "eda_summary.json").read_text())
+    metrics = json.loads((config.REPORTS_DIR / "metrics.json").read_text())
+
+    events = load_events()
+    daily = events.groupby([pd.Grouper(key="timestamp", freq="D"), "event"]).size().unstack(fill_value=0)
+    daily_out = {
+        "dates": [t.strftime("%Y-%m-%d") for t in daily.index],
+        "series": {ev: [int(x) for x in daily[ev]] for ev in ["view", "addtocart", "transaction"] if ev in daily.columns},
+    }
+
+    filtered = k_core_filter(
+        clean_events(events), config.MIN_USER_INTERACTIONS, config.MIN_ITEM_INTERACTIONS
+    )
+    pairs = aggregate_interactions(filtered)
+    users, items = build_index(pairs)
+    X = to_sparse(pairs, users, items, "weight")
+
+    print("Training Item-KNN on full history ...")
+    model = ItemKNNRecommender(n_neighbors=config.KNN_NEIGHBORS).fit(X)
+    cats = load_item_categories().set_index("itemid")["categoryid"]
+
+    counts = np.diff(X.indptr)
+    rng = np.random.default_rng(config.RANDOM_SEED)
+    picks = []
+    for lo, hi in BANDS:
+        idx = np.flatnonzero((counts >= lo) & (counts < hi))
+        if len(idx):
+            picks.extend(rng.choice(idx, size=min(SAMPLES_PER_BAND, len(idx)), replace=False))
+
+    visitors = {}
+    for row in picks:
+        X_user = X[row]
+        scores = np.asarray(model.score(X_user), dtype=float).ravel()
+        scores[X_user.toarray().ravel() > 0] = -np.inf
+        recs = []
+        for t in np.argsort(-scores)[:TOP_N]:
+            if not scores[t] > 0:
+                break
+            item = int(items[t])
+            cat = cats.get(item)
+            recs.append({
+                "itemid": item,
+                "categoryid": None if cat is None or pd.isna(cat) else int(cat),
+                "score": round(float(scores[t]), 2),
+            })
+        if recs:
+            visitors[str(int(users[row]))] = {"history_size": int(counts[row]), "recommendations": recs}
+
+    payload = {
+        "eda": eda,
+        "metrics": metrics["results"],
+        "cutoff": metrics["cutoff"],
+        "daily": daily_out,
+        "visitors": visitors,
+    }
+    out = web_dir / "data.json"
+    out.write_text(json.dumps(payload, indent=2))
+    print(f"Wrote {out} with {len(visitors)} visitors")
+
+
+if __name__ == "__main__":
+    main()
