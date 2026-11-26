@@ -14,7 +14,7 @@ The new recommendation method is content-based, not collaborative filtering. It 
 - Database licence: Open Database License (ODbL) 1.0; attribute Open Food Facts contributors and follow ODbL share-alike requirements.
 - Products are community-contributed catalogue entries; modification date does not mean the item was sold or purchased on that date.
 
-The API documents sort_by=last_modified_t and pagination. The collector sends an identifying User-Agent, spaces requests, retries 429/503 responses, and filters every record by last_modified_t >= 2026-01-01.
+The API documents sort_by=last_modified_t and pagination. To reduce load and avoid repeated search requests, each refresh fetches one page of up to 100 of the most recently modified products. The collector sends an identifying User-Agent, retries 429/503 responses, and filters every record by last_modified_t >= 2026-01-01. This is a bounded recent sample, not a complete export of Open Food Facts.
 
 ## Run on Windows
 From the retailrocket-recommender folder:
@@ -41,6 +41,6 @@ Run python scripts/build_current_recommender.py to fetch a new snapshot and rebu
 ## Limitations
 - A product catalogue is not a transaction or clickstream dataset.
 - Product fields can be incomplete, community-entered or stale.
-- The snapshot is limited to a bounded number of most recently modified API result pages.
+- The snapshot is limited to one most-recently-modified API result page (up to 100 records) per refresh. It is not statistically representative of the full database.
 - API sorting does not guarantee every recently updated product is represented in a small snapshot.
 - Respect Open Food Facts API usage rules and ODbL obligations.
