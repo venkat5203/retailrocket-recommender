@@ -13,7 +13,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 ROOT = Path(__file__).resolve().parents[1]
-API_URL = "https://world.openfoodfacts.org/api/v2/search"
+API_URLS = [
+    "https://world.openfoodfacts.org/api/v2/search",
+    "https://world.openfoodfacts.net/api/v2/search",
+]
+API_URL = API_URLS[0]
 SOURCE_URL = "https://world.openfoodfacts.org/"
 CUTOFF = datetime(2026, 1, 1, tzinfo=timezone.utc)
 CUTOFF_EPOCH = int(CUTOFF.timestamp())
@@ -27,23 +31,33 @@ FIELDS = ",".join(["code", "product_name", "brands", "categories_tags_en", "quan
 
 def get_page(session, page):
     params = {"page": page, "page_size": PAGE_SIZE, "sort_by": "last_modified_t", "fields": FIELDS}
-    for attempt in range(6):
-        response = session.get(API_URL, params=params, timeout=60)
-        if response.status_code in (429, 503):
-            retry_after = response.headers.get("Retry-After")
+    last_error = "No API endpoint returned a response."
+    for api_url in API_URLS:
+        for attempt in range(3):
             try:
-                wait = int(retry_after) if retry_after else min(20 * (2 ** attempt), 180)
-            except (TypeError, ValueError):
-                wait = min(20 * (2 ** attempt), 180)
-            print("Open Food Facts returned HTTP " + str(response.status_code) + "; retrying in " + str(wait) + " seconds.")
-            time.sleep(min(max(wait, 10), 180))
-            continue
-        response.raise_for_status()
-        payload = response.json()
-        if not isinstance(payload.get("products"), list):
-            raise RuntimeError("Open Food Facts did not return a products list.")
-        return payload
-    raise RuntimeError("Open Food Facts rate limit persisted after six backoff retries.")
+                response = session.get(api_url, params=params, timeout=45)
+                if response.status_code in (429, 503):
+                    last_error = api_url + " returned HTTP " + str(response.status_code)
+                    retry_after = response.headers.get("Retry-After")
+                    try:
+                        wait = int(retry_after) if retry_after else 15 * (2 ** attempt)
+                    except (TypeError, ValueError):
+                        wait = 15 * (2 ** attempt)
+                    print(last_error + "; retrying in " + str(wait) + " seconds.")
+                    if attempt < 2:
+                        time.sleep(min(max(wait, 10), 60))
+                    continue
+                response.raise_for_status()
+                payload = response.json()
+                if not isinstance(payload.get("products"), list):
+                    raise RuntimeError("Open Food Facts did not return a products list.")
+                payload["_source_api_url"] = api_url
+                return payload
+            except requests.RequestException as exc:
+                last_error = api_url + ": " + str(exc)
+                print("API endpoint failed; trying the next endpoint if available. " + last_error)
+                break
+    raise RuntimeError("Open Food Facts Search API remained unavailable on both endpoints. " + last_error)
 
 
 def iso(ts):
@@ -126,6 +140,7 @@ def collect():
         "records_updated_since_2026_before_deduplication": len(recent_raw),
         "unique_products_updated_since_2026": len(unique),
         "sort_direction_detected": "descending" if descending else "ascending",
+        "api_url": first.get("_source_api_url", API_URL),
     }, recent_raw
 
 
@@ -235,7 +250,7 @@ def main():
         "metadata": {
             "source": "Open Food Facts",
             "source_url": SOURCE_URL,
-            "api_url": API_URL,
+            "api_url": page_info.get("api_url", API_URL),
             "license": "Open Database License (ODbL) 1.0",
             "attribution": "Open Food Facts contributors",
             "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
