@@ -14,7 +14,7 @@ The new recommendation method is content-based, not collaborative filtering. It 
 - Database licence: Open Database License (ODbL) 1.0; attribute Open Food Facts contributors and follow ODbL share-alike requirements.
 - Products are community-contributed catalogue entries; modification date does not mean the item was sold or purchased on that date.
 
-The API documents sort_by=last_modified_t and pagination. To reduce load and avoid repeated search requests, each refresh fetches one page of up to 100 of the most recently modified products. The collector sends an identifying User-Agent, retries 429/503 responses, and filters every record by last_modified_t >= 2026-01-01. This is a bounded recent sample, not a complete export of Open Food Facts. GitHub Actions stores the last successful dashboard snapshot and reuses it during a temporary API outage, only while that snapshot is no more than 45 days old. The refresh status report distinguishes a fresh snapshot from a cached fallback.
+The API documents sort_by=last_modified_t and pagination. To reduce load, each refresh fetches one page of up to 100 of the most recently modified products. The collector sends an identifying User-Agent, tries the primary Open Food Facts Search API host and a second documented host, retries HTTP 429/503 responses with bounded delays, and filters every record by last_modified_t >= 2026-01-01. This is a bounded recent sample, not a complete export of Open Food Facts. GitHub Actions stores the last successful dashboard snapshot and reuses it during a temporary API outage, only while that snapshot is no more than 45 days old. The refresh status report distinguishes a fresh snapshot from a cached fallback.
 
 ## Run on Windows
 From the retailrocket-recommender folder:
@@ -36,7 +36,7 @@ The generated data.js and web/data.js are used by the two static HTML entry poin
 Similarity scores are ranking signals, not probabilities. Because there is no 2026 behavioural dataset, do not report Recall@K, NDCG@K, conversion lift or purchase prediction as real-world measured results.
 
 ## Refresh
-Run python scripts/build_current_recommender.py to fetch a new snapshot and rebuild recommendations. A weekly GitHub Actions workflow and manual workflow dispatch are included for reproducible refreshes. The workflow commits generated dashboard data and refresh-status reports; the raw cached API snapshot is retained in Actions cache and is not committed as a full source dump.
+Run python scripts/build_current_recommender.py to fetch a new snapshot and rebuild recommendations. A weekly GitHub Actions workflow and manual workflow dispatch are included for reproducible refreshes. The workflow commits generated dashboard data, a bounded one-page source sample for auditability, and refresh-status reports; it does not download or commit the full Open Food Facts database.
 
 ## Limitations
 - A product catalogue is not a transaction or clickstream dataset.
