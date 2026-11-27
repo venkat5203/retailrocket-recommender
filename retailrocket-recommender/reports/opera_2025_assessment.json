@@ -1,0 +1,127 @@
+{
+  "assessed_at_utc": "2026-11-27T04:11:03.882821+00:00",
+  "dataset": "OPeRA \u2014 Observation, Persona, Rationale, Action",
+  "publisher": "Northeastern University Human-centered AI Lab",
+  "dataset_url": "https://huggingface.co/datasets/NEU-HAI/OPeRA",
+  "paper": "https://arxiv.org/abs/2506.05606",
+  "license": "CC BY 4.0",
+  "action_files": [
+    {
+      "path": "OPeRA_filtered/action/test-00000-of-00001.parquet",
+      "rows": 992,
+      "bytes": 25915423,
+      "columns": [
+        "session_id",
+        "action_id",
+        "timestamp",
+        "action_type",
+        "click_type",
+        "semantic_id",
+        "mouse_position",
+        "element_meta",
+        "url",
+        "window_size",
+        "page_meta",
+        "simplified_html",
+        "rationale",
+        "products",
+        "input_text",
+        "image"
+      ],
+      "timestamp_range": {
+        "min": "2025-03-29T23:50:35.316Z",
+        "max": "2025-05-07T15:00:01.336Z"
+      }
+    },
+    {
+      "path": "OPeRA_filtered/action/train-00000-of-00002.parquet",
+      "rows": 2432,
+      "bytes": 61671489,
+      "columns": [
+        "session_id",
+        "action_id",
+        "timestamp",
+        "action_type",
+        "click_type",
+        "semantic_id",
+        "mouse_position",
+        "element_meta",
+        "url",
+        "window_size",
+        "page_meta",
+        "simplified_html",
+        "rationale",
+        "products",
+        "input_text",
+        "image"
+      ],
+      "timestamp_range": {
+        "min": "2025-03-24T21:16:32.815Z",
+        "max": "2025-05-08T00:21:03.639Z"
+      }
+    },
+    {
+      "path": "OPeRA_filtered/action/train-00001-of-00002.parquet",
+      "rows": 2432,
+      "bytes": 66261925,
+      "columns": [
+        "session_id",
+        "action_id",
+        "timestamp",
+        "action_type",
+        "click_type",
+        "semantic_id",
+        "mouse_position",
+        "element_meta",
+        "url",
+        "window_size",
+        "page_meta",
+        "simplified_html",
+        "rationale",
+        "products",
+        "input_text",
+        "image"
+      ],
+      "timestamp_range": {
+        "min": "2025-03-26T00:16:36.415Z",
+        "max": "2025-05-08T00:16:56.826Z"
+      }
+    }
+  ],
+  "timestamp_range": {
+    "min": "2025-03-24T21:16:32.815Z",
+    "max": "2025-05-08T00:21:03.639Z"
+  },
+  "aggregates": {
+    "rows": 5856,
+    "sessions": 527,
+    "action_types": {
+      "click": 5051,
+      "input": 597,
+      "terminate": 208
+    },
+    "click_types": {
+      "other": 449,
+      "product_link": 537,
+      "product_option": 700,
+      "purchase": 321,
+      "page_related": 198,
+      "cart_side_bar": 145,
+      "quantity": 191,
+      "review": 1052,
+      "search": 763,
+      "suggested_term": 182,
+      "nav_bar": 283,
+      "cart_page_select": 139,
+      "filter": 91
+    },
+    "product_rows": 5051,
+    "unique_asins": 0,
+    "unique_asins_in_products_field": 169
+  },
+  "data_limitations": [
+    "Small observational sample (hundreds of sessions and dozens of participants); do not describe as millions of online retail visitors.",
+    "Action logs represent observed browser interactions and product metadata; they are not a complete retailer transaction ledger.",
+    "Purchases should only be claimed where an explicit purchase event or product quantity in the source record supports the claim."
+  ]
+}
