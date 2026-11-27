@@ -357,8 +357,8 @@ def main():
             "recommendation_method": mode,
         }
 
-    sessions_with_product_link = int(interactions.loc[interactions["event_name"] == "product_link_action", "session_id"].nunique())
-    sessions_with_purchase_intent = int(interactions.loc[interactions["event_name"] == "purchase_intent_action", "session_id"].nunique())
+    sessions_with_product_link = int(actions.loc[actions["click_type"] == "product_link", "session_id"].nunique())
+    sessions_with_purchase_intent = int(actions.loc[actions["click_type"] == "purchase", "session_id"].nunique())
     start_date, end_date = actions["timestamp"].min(), actions["timestamp"].max()
     if start_date.year < 2025 or end_date.year < 2025:
         raise RuntimeError("OPeRA observations do not meet the 2025 date requirement.")
