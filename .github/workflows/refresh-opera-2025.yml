@@ -1,0 +1,46 @@
+name: Refresh 2025 OPeRA session recommender
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "retailrocket-recommender/scripts/build_opera_recommender.py"
+      - "retailrocket-recommender/index.html"
+      - "retailrocket-recommender/requirements.txt"
+      - ".github/workflows/refresh-opera-2025.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: opera-2025-recommender-refresh
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install recommendation and Parquet dependencies
+        working-directory: retailrocket-recommender
+        run: pip install -r requirements.txt
+      - name: Download OPeRA 2025 actions and build recommender
+        working-directory: retailrocket-recommender
+        run: python scripts/build_opera_recommender.py
+      - name: Commit refreshed dashboard data and metrics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add retailrocket-recommender/data.js retailrocket-recommender/data.json retailrocket-recommender/web/data.js retailrocket-recommender/web/data.json retailrocket-recommender/reports/opera_2025_summary.json retailrocket-recommender/reports/metrics.json retailrocket-recommender/reports/metrics.csv
+          if ! git diff --cached --quiet; then
+            git commit -m "Refresh session recommender from real OPeRA 2025 shopping actions"
+            git pull --rebase origin main
+            git push
+          fi
