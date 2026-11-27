@@ -1,62 +1,29 @@
 {
-  "cutoff": "2015-08-18 04:23:20.445000",
-  "results": {
-    "popularity": {
-      "precision@5": 0.001423,
-      "recall@5": 5.3e-05,
-      "hit_rate@5": 0.007117,
-      "ndcg@5": 0.00107,
-      "map@5": 0.00038,
-      "precision@10": 0.002847,
-      "recall@10": 0.00413,
-      "hit_rate@10": 0.021352,
-      "ndcg@10": 0.00324,
-      "map@10": 0.001046,
-      "precision@20": 0.002669,
-      "recall@20": 0.01006,
-      "hit_rate@20": 0.035587,
-      "ndcg@20": 0.004906,
-      "map@20": 0.00135,
-      "coverage": 0.001953,
-      "n_eval_users": 281
-    },
-    "item_knn": {
-      "precision@5": 0.010676,
-      "recall@5": 0.013673,
-      "hit_rate@5": 0.032028,
-      "ndcg@5": 0.014784,
-      "map@5": 0.011141,
-      "precision@10": 0.007473,
-      "recall@10": 0.020079,
-      "hit_rate@10": 0.039146,
-      "ndcg@10": 0.016088,
-      "map@10": 0.011259,
-      "precision@20": 0.004626,
-      "recall@20": 0.027048,
-      "hit_rate@20": 0.05694,
-      "ndcg@20": 0.018225,
-      "map@20": 0.011701,
-      "coverage": 0.087497,
-      "n_eval_users": 281
-    },
-    "svd": {
-      "precision@5": 0.007829,
-      "recall@5": 0.015349,
-      "hit_rate@5": 0.035587,
-      "ndcg@5": 0.012234,
-      "map@5": 0.00772,
-      "precision@10": 0.005338,
-      "recall@10": 0.022519,
-      "hit_rate@10": 0.049822,
-      "ndcg@10": 0.014661,
-      "map@10": 0.008506,
-      "precision@20": 0.004626,
-      "recall@20": 0.03275,
-      "hit_rate@20": 0.074733,
-      "ndcg@20": 0.01811,
-      "map@20": 0.009256,
-      "coverage": 0.045897,
-      "n_eval_users": 281
-    }
+  "popularity": {
+    "evaluated_targets": 4,
+    "recall@10": 0.0,
+    "hit_rate@10": 0.0,
+    "ndcg@10": 0.0,
+    "map@10": 0.0,
+    "catalog_coverage": 0.019011,
+    "mean_inference_latency_ms": 0.2934
+  },
+  "item_knn": {
+    "evaluated_targets": 4,
+    "recall@10": 0.0,
+    "hit_rate@10": 0.0,
+    "ndcg@10": 0.0,
+    "map@10": 0.0,
+    "catalog_coverage": 0.019011,
+    "mean_inference_latency_ms": 1.171
+  },
+  "svd": {
+    "evaluated_targets": 4,
+    "recall@10": 0.0,
+    "hit_rate@10": 0.0,
+    "ndcg@10": 0.0,
+    "map@10": 0.0,
+    "catalog_coverage": 0.019011,
+    "mean_inference_latency_ms": 0.2851
   }
 }
