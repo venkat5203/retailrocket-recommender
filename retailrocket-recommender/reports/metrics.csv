@@ -1,4 +1,0 @@
-model,evaluated_targets,recall@10,hit_rate@10,ndcg@10,map@10,catalog_coverage,mean_inference_latency_ms
-popularity,4,0.0,0.0,0.0,0.0,0.019011,0.2934
-item_knn,4,0.0,0.0,0.0,0.0,0.019011,1.171
-svd,4,0.0,0.0,0.0,0.0,0.019011,0.2851
