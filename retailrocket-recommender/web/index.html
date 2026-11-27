@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Retailrocket Recommender</title>
+<title>OPeRA 2025 | Online Shopping Session Recommender</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root{--bg:#0f1420;--card:#171e2e;--text:#e7ecf5;--muted:#8b97ad;--accent:#5b9dfb;--amber:#f2a65a;--green:#6fcf97;--grey:#7d8799;--border:#262f44}
@@ -12,7 +12,7 @@ body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;b
 header,main,footer{max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px}
 header{padding-top:40px}
 h1{margin:0 0 8px;font-size:28px}
-header p{color:var(--muted);margin:0;max-width:780px;line-height:1.6}
+header p{color:var(--muted);margin:0;max-width:850px;line-height:1.6}
 main{padding-bottom:40px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin:28px 0 20px}
 .card,.stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
@@ -22,101 +22,120 @@ main{padding-bottom:40px}
 .card h2{font-size:16px;margin:0 0 14px;font-weight:600}
 .wide{grid-column:1/-1}
 .chart{position:relative;height:320px}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:right}
-th:first-child,td:first-child{text-align:left}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:left}
 th{color:var(--muted);font-weight:500}
 td.best{color:var(--green);font-weight:700}
-select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px}
-.bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;min-width:120px}
-.bar span{display:block;height:100%;background:var(--accent)}
+select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;max-width:100%}
 .muted{color:var(--muted);font-size:14px}
 .note{color:var(--muted);font-size:13px;margin:14px 0 0;line-height:1.6}
+.callout{border-left:2px solid var(--accent);padding:12px 16px;margin:20px 0;background:#111b28;color:#a9b9cc;line-height:1.6}
 footer{padding-bottom:40px;color:var(--muted);font-size:13px}
 footer a{color:var(--accent)}
-@media(max-width:820px){.grid{grid-template-columns:1fr}}
+a{color:var(--accent)}
+.explorer-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}.wide{grid-column:1}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Retailrocket E-commerce Recommender</h1>
-  <p>Analysis of 2.76 million user events from an online store, with three recommendation models compared on a time-based test split. Item-based collaborative filtering and latent-factor (SVD) models both outperform a popularity baseline.</p>
+  <h1>OPeRA 2025 · Online Shopping Session Recommender</h1>
+  <p>Session-based product recommendations built from real human online-shopping actions collected between March and May 2025. Popularity, item co-visitation and SVD models are compared on a chronological session holdout.</p>
 </header>
 
 <main>
+  <div class="callout" id="sourceNote">Loading the verified 2025 source snapshot…</div>
   <section class="stats" id="stats"></section>
 
   <section class="grid">
     <div class="card wide">
-      <h2>Daily events by type (log scale)</h2>
+      <h2>Daily observed shopping actions</h2>
       <div class="chart"><canvas id="daily"></canvas></div>
     </div>
 
     <div class="card">
-      <h2>Visitor funnel</h2>
+      <h2>Shopping sessions by action type</h2>
       <div class="chart"><canvas id="funnel"></canvas></div>
+      <p class="note">These are counts of sessions containing each action type, not a measured conversion funnel.</p>
     </div>
 
     <div class="card">
-      <h2>Top categories by views</h2>
-      <div class="chart"><canvas id="cats"></canvas></div>
+      <h2>Most frequently associated products</h2>
+      <div class="chart"><canvas id="products"></canvas></div>
     </div>
 
     <div class="card wide">
-      <h2>Model comparison (K = 10)</h2>
+      <h2>Next-product model comparison (K = 10)</h2>
       <div class="chart"><canvas id="models"></canvas></div>
     </div>
 
     <div class="card wide">
-      <h2>All metrics</h2>
+      <h2>Offline ranking metrics</h2>
       <div id="metricsTable"></div>
       <p class="note" id="metricsNote"></p>
     </div>
 
     <div class="card wide">
-      <h2>Recommendation explorer</h2>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-        <label for="visitor" class="muted">Visitor ID</label>
-        <select id="visitor"></select>
+      <h2>Session recommendation explorer</h2>
+      <div class="explorer-controls">
+        <label for="session" class="muted">Shopping session</label>
+        <select id="session"></select>
         <span id="history" class="muted"></span>
       </div>
+      <div id="historyTable"></div>
+      <h3 style="font-size:14px;margin-top:24px">Recommended next products</h3>
       <div id="recs"></div>
-      <p class="note">Top-10 recommendations from Item-KNN, trained on the full filtered history. Items the visitor has already interacted with are excluded. Scores are summed item similarities, so they are comparable within a visitor, not across visitors.</p>
+      <p class="note" id="targetNote"></p>
+    </div>
+
+    <div class="card wide">
+      <h2>Source, methodology and limitations</h2>
+      <p id="sourceDetails" class="muted"></p>
+      <p class="note">Product metadata is taken from the products attached to observed browser actions. Product-link clicks and purchase-intent button clicks are separate action types. A purchase-intent click is not evidence that an order was completed. The source is a small research sample from real participants, not a retailer-wide clickstream or market-representative population.</p>
+      <p class="note">The evaluation uses a session-level chronological 80/20 split. It evaluates the next product-associated item in a held-out session sequence. The results are an offline research demonstration and are not an online A/B test.</p>
+      <p class="note"><a href="https://huggingface.co/datasets/NEU-HAI/OPeRA">Open dataset</a> · <a href="https://arxiv.org/abs/2506.05606">Research paper</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0 licence</a></p>
     </div>
   </section>
 </main>
 
 <footer>
-  Data: Retailrocket e-commerce dataset. Code and reproduction steps: <a href="https://github.com/venkat5203/retailrocket-recommender">GitHub repository</a>.
+  Data: OPeRA — Observation, Persona, Rationale, Action (Wang et al., 2025). Repository: <a href="https://github.com/venkat5203/retailrocket-recommender">GitHub</a>.
 </footer>
 
 <script src="data.js"></script>
 <script>
-const COLORS = { view: "#5b9dfb", addtocart: "#f2a65a", transaction: "#6fcf97" };
+const COLORS = { click: "#5b9dfb", scroll: "#f2a65a", input: "#6fcf97", navigation: "#ad8cf0", terminate: "#7d8799", tab_activate: "#e879a9" };
 const MODEL_COLORS = { popularity: "#7d8799", item_knn: "#5b9dfb", svd: "#f2a65a" };
-const MODEL_LABELS = { popularity: "Popularity", item_knn: "Item-KNN", svd: "SVD" };
+const MODEL_LABELS = { popularity: "Popularity", item_knn: "Item co-visitation + MMR", svd: "Session SVD" };
 const TICK = { color: "#8b97ad" };
 const GRID = { color: "#262f44" };
 const LEGEND = { labels: { color: "#e7ecf5" } };
-const fmt = n => Number(n).toLocaleString();
+const fmt = n => Number(n || 0).toLocaleString();
+const fixed = n => Number(n || 0).toFixed(4);
 
 if (window.DASHBOARD_DATA) {
   render(window.DASHBOARD_DATA);
 } else {
   document.querySelector("main").insertAdjacentHTML("afterbegin",
-    `<p class="muted">Dashboard data file (web/data.js) not found.</p>`);
+    '<p class="muted">Dashboard data file not found. Run the OPeRA data pipeline.</p>');
 }
 
 function render(d) {
   const e = d.eda;
+  const meta = d.metadata;
+  document.getElementById("sourceNote").textContent =
+    "Verified observation window: " + e.date_range[0] + " to " + e.date_range[1] +
+    ". Source: OPeRA real-user shopping sessions. No timestamps were shifted.";
 
   document.getElementById("stats").innerHTML = [
-    ["Events", e.n_events],
-    ["Visitors", e.n_visitors],
-    ["Items", e.n_items],
-    ["Purchase events", e.event_counts.transaction],
+    ["Observed actions", e.n_events],
+    ["Shopping sessions", e.n_sessions],
+    ["Participants", e.n_users],
+    ["Products with metadata", e.n_items],
+    ["Product-link actions", e.product_link_actions],
+    ["Purchase-intent clicks", e.purchase_intent_actions],
   ].map(([label, value]) =>
-    `<div class="stat"><div class="v">${fmt(value)}</div><div class="l">${label}</div></div>`
+    '<div class="stat"><div class="v">' + fmt(value) + '</div><div class="l">' + label + '</div></div>'
   ).join("");
 
   new Chart(document.getElementById("daily"), {
@@ -124,10 +143,10 @@ function render(d) {
     data: {
       labels: d.daily.dates,
       datasets: Object.entries(d.daily.series).map(([name, values]) => ({
-        label: name,
+        label: name.replaceAll("_", " "),
         data: values,
-        borderColor: COLORS[name],
-        backgroundColor: COLORS[name],
+        borderColor: COLORS[name] || "#8b97ad",
+        backgroundColor: COLORS[name] || "#8b97ad",
         borderWidth: 2,
         pointRadius: 0,
         tension: 0.25,
@@ -139,40 +158,37 @@ function render(d) {
       interaction: { mode: "index", intersect: false },
       scales: {
         x: { ticks: { ...TICK, maxTicksLimit: 10 }, grid: GRID },
-        y: { type: "logarithmic", ticks: TICK, grid: GRID },
+        y: { ticks: TICK, grid: GRID },
       },
       plugins: { legend: LEGEND },
     },
   });
 
-  const f = e.funnel;
+  const funnel = [
+    ["Sessions with product-link actions", e.sessions_with_product_link],
+    ["Sessions with purchase-intent actions", e.sessions_with_purchase_intent],
+  ];
   new Chart(document.getElementById("funnel"), {
     type: "bar",
     data: {
-      labels: [
-        `Viewed (${fmt(f.visitors_viewed)})`,
-        `Added to cart (${fmt(f.visitors_added_to_cart)})`,
-        `Purchased (${fmt(f.visitors_purchased)})`,
-      ],
-      datasets: [{
-        data: [f.visitors_viewed, f.visitors_added_to_cart, f.visitors_purchased],
-        backgroundColor: ["#7d8799", "#f2a65a", "#6fcf97"],
-      }],
+      labels: funnel.map(x => x[0]),
+      datasets: [{ data: funnel.map(x => x[1]), backgroundColor: ["#5b9dfb", "#f2a65a"] }],
     },
     options: {
+      indexAxis: "y",
       responsive: true,
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: { x: { ticks: TICK, grid: GRID }, y: { ticks: TICK, grid: GRID, type: "logarithmic" } },
+      scales: { x: { ticks: TICK, grid: GRID }, y: { ticks: TICK, grid: { display: false } } },
     },
   });
 
-  const catEntries = Object.entries(e.top_categories_by_views);
-  new Chart(document.getElementById("cats"), {
+  const top = d.top_products.slice(0, 12);
+  new Chart(document.getElementById("products"), {
     type: "bar",
     data: {
-      labels: catEntries.map(([id]) => `Category ${id}`),
-      datasets: [{ data: catEntries.map(([, v]) => v), backgroundColor: "#5b9dfb" }],
+      labels: top.map(x => String(x.title).slice(0, 30)),
+      datasets: [{ data: top.map(x => x.interactions), backgroundColor: "#5b9dfb" }],
     },
     options: {
       indexAxis: "y",
@@ -203,52 +219,64 @@ function render(d) {
     },
   });
 
-  renderMetricsTable(d.metrics, models);
+  renderMetricsTable(d.metrics, models, e);
   setupExplorer(d.visitors);
+
+  document.getElementById("sourceDetails").textContent =
+    meta.publisher + " · " + meta.license + " · " + meta.date_range[0].slice(0, 10) +
+    " to " + meta.date_range[1].slice(0, 10) + ". " + e.n_events.toLocaleString() +
+    " actions, " + e.n_sessions.toLocaleString() + " sessions, " + e.n_users.toLocaleString() +
+    " participants and " + e.n_items.toLocaleString() + " ASINs with product metadata.";
 }
 
-function renderMetricsTable(metrics, models) {
-  const rowNames = Object.keys(metrics[models[0]]).filter(n => n !== "n_eval_users");
-  const header = models.map(m => `<th>${MODEL_LABELS[m] || m}</th>`).join("");
+function renderMetricsTable(metrics, models, eda) {
+  const rowNames = ["evaluated_targets", "recall@10", "hit_rate@10", "ndcg@10", "map@10", "catalog_coverage", "mean_inference_latency_ms"];
+  const header = models.map(m => '<th>' + (MODEL_LABELS[m] || m) + '</th>').join("");
   const rows = rowNames.map(name => {
-    const values = models.map(m => metrics[m][name]);
-    const best = Math.max(...values);
+    const values = models.map(m => Number(metrics[m][name] || 0));
+    const best = name === "mean_inference_latency_ms" ? Math.min(...values) : Math.max(...values);
     const cells = values.map(v =>
-      `<td class="${v === best ? "best" : ""}">${v.toFixed(4)}</td>`
+      '<td class="' + (v === best ? "best" : "") + '">' + (name === "evaluated_targets" ? fmt(v) : fixed(v)) + '</td>'
     ).join("");
-    return `<tr><td>${name}</td>${cells}</tr>`;
+    return '<tr><td>' + name + '</td>' + cells + '</tr>';
   }).join("");
   document.getElementById("metricsTable").innerHTML =
-    `<table><thead><tr><th>Metric</th>${header}</tr></thead><tbody>${rows}</tbody></table>`;
-  const n = metrics[models[0]].n_eval_users;
+    '<table><thead><tr><th>Metric</th>' + header + '</tr></thead><tbody>' + rows + '</tbody></table>';
   document.getElementById("metricsNote").textContent =
-    `Best value per row is highlighted. Evaluated on ${fmt(n)} test users with at least one add-to-cart or purchase after the split. Results are based on a small sample, so differences of a few thousandths are within noise.`;
+    "Evaluated " + fmt(eda.evaluated_next_product_targets) +
+    " next-product targets using a session-level chronological 80/20 split. Best value is highlighted per metric (latency: lower is better).";
 }
 
 function setupExplorer(visitors) {
-  const select = document.getElementById("visitor");
+  const select = document.getElementById("session");
   const ids = Object.keys(visitors);
-  select.innerHTML = ids.map(id => `<option value="${id}">${id}</option>`).join("");
-
+  select.innerHTML = ids.map(id => '<option value="' + id + '">' + id.slice(0, 52) + '</option>').join("");
   const show = id => {
     const v = visitors[id];
-    document.getElementById("history").textContent =
-      `${v.history_size} items in this visitor's history`;
-    const max = Math.max(...v.recommendations.map(r => r.score)) || 1;
-    const rows = v.recommendations.map((r, i) => `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${fmt(r.itemid)}</td>
-        <td>${r.categoryid ?? "–"}</td>
-        <td>${r.score.toFixed(2)}</td>
-        <td><div class="bar"><span style="width:${(100 * r.score / max).toFixed(1)}%"></span></div></td>
-      </tr>`).join("");
+    document.getElementById("history").textContent = fmt(v.history_size) + " product-associated actions in this session history";
+    document.getElementById("historyTable").innerHTML =
+      '<table><thead><tr><th>ASIN</th><th>Product title</th><th>Action</th></tr></thead><tbody>' +
+      v.history.map(x => '<tr><td>' + x.itemid + '</td><td>' + x.title + '</td><td>' + x.event + '</td></tr>').join("") +
+      '</tbody></table>';
+    const max = Math.max(...v.recommendations.map(r => r.score), 1);
     document.getElementById("recs").innerHTML =
-      `<table><thead><tr><th>Rank</th><th>Item ID</th><th>Category</th><th>Score</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+      '<table><thead><tr><th>Rank</th><th>ASIN</th><th>Recommended product</th><th>Price</th><th>Score</th></tr></thead><tbody>' +
+      v.recommendations.map((r, i) =>
+        '<tr><td>' + (i + 1) + '</td><td>' + r.itemid + '</td><td>' + r.title +
+        '</td><td>' + (r.price == null ? '—' : Number(r.price).toFixed(2)) +
+        '</td><td>' + Number(r.score).toFixed(3) + '</td></tr>'
+      ).join("") + '</tbody></table>';
+    document.getElementById("targetNote").textContent =
+      "Held-out next product in this session: " + v.held_out_next_item.itemid + " · " + v.held_out_next_item.title +
+      ". Recommendations are generated from other sessions and exclude items already in this session history.";
   };
-
-  select.addEventListener("change", () => show(select.value));
-  show(ids[0]);
+  if (ids.length) {
+    select.addEventListener("change", () => show(select.value));
+    show(ids[0]);
+  } else {
+    select.innerHTML = '<option>No eligible test sessions</option>';
+    document.getElementById("recs").textContent = "No held-out session has enough product actions to show recommendations.";
+  }
 }
 </script>
 </body>
