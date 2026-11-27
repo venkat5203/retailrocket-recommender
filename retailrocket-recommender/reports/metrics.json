@@ -1,29 +1,4 @@
 {
-  "popularity": {
-    "evaluated_targets": 4,
-    "recall@10": 0.0,
-    "hit_rate@10": 0.0,
-    "ndcg@10": 0.0,
-    "map@10": 0.0,
-    "catalog_coverage": 0.019011,
-    "mean_inference_latency_ms": 0.2934
-  },
-  "item_knn": {
-    "evaluated_targets": 4,
-    "recall@10": 0.0,
-    "hit_rate@10": 0.0,
-    "ndcg@10": 0.0,
-    "map@10": 0.0,
-    "catalog_coverage": 0.019011,
-    "mean_inference_latency_ms": 1.171
-  },
-  "svd": {
-    "evaluated_targets": 4,
-    "recall@10": 0.0,
-    "hit_rate@10": 0.0,
-    "ndcg@10": 0.0,
-    "map@10": 0.0,
-    "catalog_coverage": 0.019011,
-    "mean_inference_latency_ms": 0.2851
-  }
+  "status": "insufficient_for_reliable_accuracy_metrics",
+  "note": "The available sample yields too few held-out next-product targets for reliable Recall/NDCG claims. No zero-filled or synthetic accuracy scores are displayed."
 }
