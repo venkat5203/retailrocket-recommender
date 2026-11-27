@@ -38,7 +38,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add retailrocket-recommender/data.js retailrocket-recommender/data.json retailrocket-recommender/web/data.js retailrocket-recommender/web/data.json retailrocket-recommender/reports/opera_2025_summary.json retailrocket-recommender/reports/metrics.json retailrocket-recommender/reports/metrics.csv
+          git add retailrocket-recommender/data.js retailrocket-recommender/data.json retailrocket-recommender/web/data.js retailrocket-recommender/web/data.json retailrocket-recommender/reports/opera_2025_summary.json retailrocket-recommender/reports/metrics.json
           if ! git diff --cached --quiet; then
             git commit -m "Refresh session recommender from real OPeRA 2025 shopping actions"
             git pull --rebase origin main
