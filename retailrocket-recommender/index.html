@@ -69,7 +69,7 @@ a{color:var(--accent)}
     </div>
 
     <div class="card wide">
-      <h2>Recommendation methods and evaluation coverage</h2>
+      <h2>How the recommendation demo works</h2>
       <span class="status" id="evaluationStatus">Checking evaluation coverage</span>
       <p id="evaluationMessage" class="muted"></p>
       <div class="method-grid">
@@ -197,14 +197,15 @@ function render(d) {
 
   document.getElementById("evaluationStatus").textContent =
     ev.status === "insufficient_for_reliable_accuracy_metrics"
-      ? "Insufficient holdout for reliable accuracy metrics"
+      ? "Exploratory demo · limited evaluation sample"
       : "Offline evaluation available";
-  document.getElementById("evaluationMessage").textContent = ev.message;
+  document.getElementById("evaluationMessage").textContent =
+    "The available 2025 shopping sessions support an interactive recommendation demo. " +
+    "Only " + fmt(ev.eligible_next_product_targets) +
+    " next-product targets qualify in the chronological holdout, so accuracy scores are omitted rather than presented as reliable results.";
   document.getElementById("evaluationNote").textContent =
-    "Eligible next-product targets: " + fmt(ev.eligible_next_product_targets) +
-    " · Minimum target count configured for reporting: " + fmt(ev.minimum_targets_for_reporting) +
-    " · Training sessions: " + fmt(ev.train_sessions) +
-    " · Evaluation sessions: " + fmt(ev.test_sessions) + ".";
+    "Evaluation split: " + fmt(ev.train_sessions) + " training sessions and " +
+    fmt(ev.test_sessions) + " held-out sessions. The target count is too small for dependable Recall@K or NDCG@K reporting.";
 
   setupProductExplorer(d.products);
   setupSessionExplorer(d.visitors);
